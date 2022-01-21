@@ -232,7 +232,9 @@ namespace hex::plugin::builtin {
     public:
         NodeDisplayInteger() : Node("hex.builtin.nodes.display.int.header", {
             dp::Attribute(dp::Attribute::IOType::In, dp::Attribute::Type::Integer, "hex.builtin.nodes.display.int.input")
-        }) {}
+        }) {
+            this->allowImmediateOnInput(0, false);
+        }
 
         void drawNode() override {
             ImGui::PushItemWidth(150);
@@ -258,7 +260,9 @@ namespace hex::plugin::builtin {
     public:
         NodeDisplayFloat() : Node("hex.builtin.nodes.display.float.header", {
             dp::Attribute(dp::Attribute::IOType::In, dp::Attribute::Type::Float, "hex.builtin.nodes.display.float.input")
-        }) {}
+        }) {
+            this->allowImmediateOnInput(0, false);
+        }
 
         void drawNode() override {
             ImGui::PushItemWidth(150);

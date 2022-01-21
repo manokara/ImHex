@@ -272,7 +272,26 @@ namespace hex::plugin::builtin {
 
                     if (attribute.getIOType() == dp::Attribute::IOType::In) {
                         ImNodes::BeginInputAttribute(attribute.getID(), pinShape);
+
                         ImGui::TextUnformatted(LangEntry(attribute.getUnlocalizedName()));
+
+                        // Immediate entry if no nodes are connected
+                        if (attribute.getConnectedAttributes().size() == 0 && attribute.allowsImmediate()) {
+                            ImGui::PushItemWidth(80);
+
+                            switch (attribute.getType()) {
+                                case dp::Attribute::Type::Integer:
+                                    ImGui::InputScalar("hex", ImGuiDataType_U64, attribute.integerImmediatePtr(), nullptr, nullptr, "%llx", ImGuiInputTextFlags_CharsHexadecimal);
+                                    break;
+
+                                case dp::Attribute::Type::Float:
+                                    ImGui::InputScalar("##floatValue", ImGuiDataType_Float, attribute.floatImmediatePtr(), nullptr, nullptr, "%f", ImGuiInputTextFlags_CharsDecimal);
+                                    break;
+                            }
+
+                            ImGui::PopItemWidth();
+                        }
+
                         ImNodes::EndInputAttribute();
                     } else if (attribute.getIOType() == dp::Attribute::IOType::Out) {
                         ImNodes::BeginOutputAttribute(attribute.getID(), ImNodesPinShape(pinShape + 1));
@@ -386,6 +405,7 @@ namespace hex::plugin::builtin {
             currNodeOutput["type"] = node->getUnlocalizedName();
             currNodeOutput["pos"] = { { "x", pos.x }, { "y", pos.y } };
             currNodeOutput["attrs"] = json::array();
+            currNodeOutput["imm"] = json::array();
             currNodeOutput["id"] = id;
 
             json nodeData;
@@ -395,6 +415,21 @@ namespace hex::plugin::builtin {
             u32 attrIndex = 0;
             for (auto &attr : node->getAttributes()) {
                 currNodeOutput["attrs"][attrIndex] = attr.getID();
+
+                if (attr.allowsImmediate()) {
+                    switch (attr.getType()) {
+                        case dp::Attribute::Type::Integer:
+                            currNodeOutput["imm"][attrIndex] = attr.integerImmediate();
+                            break;
+
+                        case dp::Attribute::Type::Float:
+                            currNodeOutput["imm"][attrIndex] = attr.floatImmediate();
+                            break;
+                    }
+                }
+                else
+                    currNodeOutput["imm"][attrIndex] = nullptr;
+
                 attrIndex++;
             }
         }
@@ -448,14 +483,30 @@ namespace hex::plugin::builtin {
             bool hasInput = false;
             u32 attrIndex = 0;
             for (auto &attr : newNode->getAttributes()) {
+                u32 attrId = node["attrs"][attrIndex];
+                maxAttrId = std::max(attrId, maxAttrId);
+
                 if (attr.getIOType() == dp::Attribute::IOType::Out)
                     hasOutput = true;
 
-                if (attr.getIOType() == dp::Attribute::IOType::In)
+                if (attr.getIOType() == dp::Attribute::IOType::In) {
                     hasInput = true;
 
-                u32 attrId = node["attrs"][attrIndex];
-                maxAttrId = std::max(attrId, maxAttrId);
+                    // Set immediate value if available
+                    if (attr.allowsImmediate() && !node["imm"][attrIndex].is_null()) {
+                        auto immediate = node["imm"][attrIndex];
+
+                        switch (attr.getType()) {
+                            case dp::Attribute::Type::Integer:
+                                attr.setIntegerImmediate(immediate);
+                                break;
+
+                            case dp::Attribute::Type::Float:
+                                attr.setFloatImmediate(immediate);
+                                break;
+                        }
+                    }
+                }
 
                 attr.setID(attrId);
                 attrIndex++;
@@ -512,3 +563,4 @@ namespace hex::plugin::builtin {
     }
 
 }
+
